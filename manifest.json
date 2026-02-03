@@ -1,0 +1,21 @@
+{
+  "name": "Looper8+ Pro",
+  "short_name": "Looper8+",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0f0c",
+  "theme_color": "#111718",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/9044/9044877.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/9044/9044877.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
