@@ -166,3 +166,11 @@ h1{margin:0;font-size:18px}
 .fx-grid output { font-weight: 700; color: var(--ink); font-size: 13px; margin-top: 2px; }
 #fxPanelResizeHandle { height: 12px; cursor: se-resize; background: rgba(255,255,255,0.05); }
 #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 3000; }
+/* ====== LANDSCAPE MOBILE SCROLLFIX ====== */
+/* When viewport is short (phone landscape), unlock height so page scrolls naturally */
+@media (max-height: 500px) {
+  html, body { height: auto; min-height: 100%; overflow-y: auto; }
+  .wrap { height: auto; min-height: 100vh; }
+  .tracks { overflow-y: visible; flex: unset; min-height: 0; }
+  .easy-grid { overflow-y: visible; flex: unset; min-height: 400px; }
+}
