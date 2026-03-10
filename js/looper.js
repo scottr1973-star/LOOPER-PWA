@@ -351,7 +351,19 @@
   inputGain.addEventListener('input', e => { if (inputGainNode) inputGainNode.gain.setTargetAtTime(Number(e.target.value), audioCtx.currentTime, 0.01); });
   
   function computeMeasureLength(){ return (60 / bpm) * tsTop * (4 / tsBottom); }
-  function updateMeasureDisplay(){ measureLength = computeMeasureLength(); measureInfo.textContent = `${measureLength.toFixed(2)}s | ${tsTop}/${tsBottom} @ ${bpm}`; if (loopLenSec){ const measures = Math.max(1, Math.round(loopLenSec / measureLength)); loopLenSec = measures * measureLength; loopBadge.style.display = 'inline-block'; loopBadge.textContent = 'Loop: ' + loopLenSec.toFixed(2) + ' s'; loopMeasuresInput.value = measures; } }
+  function updateMeasureDisplay(){
+    measureLength = computeMeasureLength();
+    measureInfo.textContent = `${measureLength.toFixed(2)}s | ${tsTop}/${tsBottom} @ ${bpm}`;
+    // Only re-snap loopLenSec if we actually have a loop — and only update the DISPLAY of measure count,
+    // never let this silently change loopLenSec in a way that affects BPM
+    if (loopLenSec) {
+      const measures = Math.max(1, Math.round(loopLenSec / measureLength));
+      // Update display only — do NOT reassign loopLenSec here (that would let BPM drag loop length)
+      loopBadge.style.display = 'inline-block';
+      loopBadge.textContent = 'Loop: ' + loopLenSec.toFixed(2) + ' s';
+      loopMeasuresInput.value = measures;
+    }
+  }
   function scheduleMetroTickAt(time, isAccent){ 
     const osc = audioCtx.createOscillator(); 
     const env = audioCtx.createGain(); 
@@ -411,13 +423,33 @@
   }
   setupTempoUI();
 
-  // ====== FIX: Apply Loop Measures ======
+  // ====== Apply Loop Measures ======
   applyLoopBtn.addEventListener('click', () => {
-    if (!measureLength) measureLength = computeMeasureLength();
+    // Always snapshot BPM fresh from the input so stale state can't bleed in
+    const currentBpm = Math.max(40, Math.min(240, Number(bpmInput.value) || 120));
+    bpm = currentBpm;
+
+    // Compute measure length purely from current BPM — do NOT use measureLength cache
+    const freshMeasureLen = (60 / bpm) * tsTop * (4 / tsBottom);
+    measureLength = freshMeasureLen;
+
     const measures = Math.max(1, parseInt(loopMeasuresInput.value) || 4);
     loopLenSec = measures * measureLength;
-    setLoopLenDisplay();
-    toast(`Loop: ${measures} measures (${loopLenSec.toFixed(2)}s)`);
+
+    // Explicitly restore BPM UI in case any event cascade altered it
+    bpmInput.value = bpm;
+    bpmSlider.value = bpm;
+
+    // Update displays directly — don't call updateMeasureDisplay (it can re-snap loopLenSec unexpectedly)
+    measureInfo.textContent = `${measureLength.toFixed(2)}s | ${tsTop}/${tsBottom} @ ${bpm}`;
+    loopBadge.style.display = 'inline-block';
+    loopBadge.textContent = 'Loop: ' + loopLenSec.toFixed(2) + 's';
+    loopMeasuresInput.value = measures;
+
+    // Resync metronome if running
+    if (metronomeEnabled && playing) { stopMetronome(); startMetronome(); }
+
+    toast(`Loop: ${measures} measures (${loopLenSec.toFixed(2)}s @ ${bpm} BPM)`);
   });
 
   // ====== COUNT-IN ======
@@ -533,14 +565,16 @@
     toggleBtn.disabled = false; toggleBtn.textContent = 'Stop'; toggleBtn.className = 'btn small red';
     recBusy = false;
 
-    // On the very first recording (no loop yet), do a 1-measure count-in
-    const isFirstRec = !playing && !loopLenSec;
+    // Count-in any time the transport isn't rolling yet (first track start)
+    const isFirstRec = !playing;
     if (isFirstRec) {
       if (!measureLength) measureLength = computeMeasureLength();
-      // Snap loopLenSec from the measures input now so count-in knows the tempo
-      const measures = Math.max(1, parseInt(loopMeasuresInput.value) || 4);
-      loopLenSec = measures * measureLength;
-      setLoopLenDisplay();
+      // If loopLenSec wasn't pre-set via Apply, snap it from the measures input now
+      if (!loopLenSec) {
+        const measures = Math.max(1, parseInt(loopMeasuresInput.value) || 4);
+        loopLenSec = measures * measureLength;
+        setLoopLenDisplay();
+      }
 
       countInActive = true;
       tr(i).statusEl.textContent = 'Count-in…';
